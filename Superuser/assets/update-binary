@@ -45,8 +45,20 @@ cp $PLATFORM/su /system/xbin/su
 chown 0:0 /system/xbin/su
 chmod 0755 /system/xbin/su
 
-cp Superuser.apk /system/app
-chmod 644 /system/app/Superuser.apk
+if test '/system/app/*/*.apk' != /system/app/*/*.apk 2>/dev/null
+then
+  mkdir -m 755 -p /system/app/Superuser
+  cp Superuser.apk /system/app/Superuser
+  chmod 644 /system/app/Superuser/Superuser.apk
+#elif test '/system/app/*.apk' != /system/app/*.apk 2>/dev/null
+#then
+else
+  cp Superuser.apk /system/app
+  chmod 644 /system/app/Superuser.apk
+#else
+#  echo -n -e 'ui_print Install location for Superuser.apk unknown, failed\n' > /proc/self/fd/$2
+#  exit 1
+fi
 
 # if the system is at least 4.3, and there is no su daemon built in,
 # let's try to install it using install-recovery.sh
