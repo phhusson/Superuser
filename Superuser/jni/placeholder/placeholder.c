@@ -112,7 +112,11 @@ failure:
 	//Exec original app_process32
 	//Should be useless, because it's current context ?
 	//setexeccon("u:r:zygote:s0");
-	execve("/system/bin/app_process32.old", argv, envp);
+#define STR_HELP(s) #s
+#define STR(s) STR_HELP(s)
+	execve("/system/bin/app_process"STR(__WORDSIZE)".old", argv, envp);
+#undef STR_HELP
+#undef STR
 
 	return 1;
 }
