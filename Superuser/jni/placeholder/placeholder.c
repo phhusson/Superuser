@@ -35,6 +35,8 @@
 #include <sys/sendfile.h>
 #include <dlfcn.h>
 
+#include "placeholder.h"
+
 static int copy_file(const char* src, const char *dst) {
 	int ifd = open(src, O_RDONLY);
 	if(ifd == -1)
@@ -51,9 +53,6 @@ static int copy_file(const char* src, const char *dst) {
 
 	return 0;
 }
-
-//From placeholder.c
-int setup_policy();
 
 //This is calle das 1000:1000 system_server
 //The only guy who has the rights to write to /data/security/current, and to set selinux.reload_policy
@@ -80,12 +79,13 @@ static void setup_selinux() {
 }
 
 int main(int argc, char *argv[], char *envp[]) {
-	if(geteuid() != 0)
-		return execve("/system/bin/app_process32.old", argv, envp);
+	int pid, status;
 
-	(void)argc;
-	int p = fork();
-	if(!p) {
+	if(geteuid() != 0)
+		goto failure;
+
+	pid = fork();
+	if(!pid) { /* child process doing SELinux work */
 		setuid(1000);
 		seteuid(1000);
 		setcon("u:r:system_server:s0");
@@ -93,20 +93,30 @@ int main(int argc, char *argv[], char *envp[]) {
 		return 0;
 	}
 
-	//Wait for it...
-	int status = -1;
-	waitpid(p, &status, 0);
-	//TODO: Error checking ?
-	if(!fork()) {
-		setcon("u:r:system_server:s0");
-		execl("/system/xbin/su", "su", "--daemon", NULL);
+	/* otherwise we've got an error and can do little */
+	if(pid>0) {
+		//Wait for it...
+		status = -1;
+		waitpid(pid, &status, 0);
+		//TODO: Error checking ?
+		if(!fork()) {
+			const char *const su_exec="/system/xbin/su";
+			char *const su_argv[]={ "su", "--daemon", NULL, };
+			setcon("u:r:system_server:s0");
+			execve(su_exec, su_argv, envp);
+		}
 	}
-	
 
+
+failure:
 	//Exec original app_process32
 	//Should be useless, because it's current context ?
 	//setexeccon("u:r:zygote:s0");
-	execve("/system/bin/app_process32.old", argv, envp);
+#define STR_HELP(s) #s
+#define STR(s) STR_HELP(s)
+	execve("/system/bin/app_process"STR(__WORDSIZE)".old", argv, envp);
+#undef STR_HELP
+#undef STR
 
 	return 1;
 }

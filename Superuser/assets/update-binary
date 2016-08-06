@@ -10,13 +10,17 @@ echo -n -e 'ui_print\n' > /proc/self/fd/$2
 ARCH=$(uname -m)
 
 # x86 needs to match: i486, i686, x86_64, ...
-if echo "$ARCH" | grep -q 86; then
-  PLATFORM=x86
-elif [ "$ARCH" = "mips" -o "$ARCH" = "mips64" ]; then
-  PLATFORM=mips
-else
-  PLATFORM=armeabi
-fi
+case "${ARCH}" in
+  (i386|i686|x86_64|amd64|*86*)
+    PLATFORM=x86
+  ;;
+  (arm|armel|armeabi|aarch64|arm64-v8a)
+    PLATFORM=armeabi
+  ;;
+  (mips|mipsel|mips64|mips64el)
+    PLATFORM=mips
+  ;;
+esac
 
 cd /tmp
 mkdir superuser
@@ -45,8 +49,20 @@ cp $PLATFORM/su /system/xbin/su
 chown 0:0 /system/xbin/su
 chmod 0755 /system/xbin/su
 
-cp Superuser.apk /system/app
-chmod 644 /system/app/Superuser.apk
+if test '/system/app/*/*.apk' != /system/app/*/*.apk 2>/dev/null
+then
+  mkdir -m 755 -p /system/app/Superuser
+  cp Superuser.apk /system/app/Superuser
+  chmod 644 /system/app/Superuser/Superuser.apk
+#elif test '/system/app/*.apk' != /system/app/*.apk 2>/dev/null
+#then
+else
+  cp Superuser.apk /system/app
+  chmod 644 /system/app/Superuser.apk
+#else
+#  echo -n -e 'ui_print Install location for Superuser.apk unknown, failed\n' > /proc/self/fd/$2
+#  exit 1
+fi
 
 # if the system is at least 4.3, and there is no su daemon built in,
 # let's try to install it using install-recovery.sh
@@ -75,6 +91,7 @@ for i in etc/install-recovery.sh bin/install-recovery.sh bin/install_recovery.sh
 done
 
 #Rename original app_process32
+#TODO: add support for adding a hook into app_process64
 if [ ! -f /system/bin/app_process32.old ];then
 	mv /system/bin/app_process32 /system/bin/app_process32.old
 fi

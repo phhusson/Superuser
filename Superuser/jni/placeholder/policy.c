@@ -22,6 +22,8 @@
 #include <sepol/policydb/avrule_block.h>
 #include <sepol/policydb/conditional.h>
 
+#include "placeholder.h"
+
 void usage(char *arg0) {
 	fprintf(stderr, "%s -s <source type> -t <target type> -c <class> -p <perm> -P <policy file> -o <output file>\n", arg0);
 	fprintf(stderr, "%s -Z permissive_type -P <policy file> -o <output file>\n", arg0);
@@ -37,7 +39,7 @@ void *cmalloc(size_t s) {
 	return t;
 }
 
-void set_attr(char *type, policydb_t *policy, int value) {
+void set_attr(const hashtab_key_t type, policydb_t *policy, int value) {
 	type_datum_t *attr = hashtab_search(policy->p_types.table, type);
 	if (!attr)
 		exit(1);
@@ -49,7 +51,7 @@ void set_attr(char *type, policydb_t *policy, int value) {
 		exit(1);
 }
 
-void create_domain(char *d, policydb_t *policy) {
+void create_domain(const hashtab_key_t d, policydb_t *policy) {
 	symtab_datum_t *src = hashtab_search(policy->p_types.table, d);
 	if(src)
 		return;
@@ -100,13 +102,14 @@ void create_domain(char *d, policydb_t *policy) {
 	set_attr("domain", policy, value);
 }
 
-int add_rule(char *s, char *t, char *c, char *p, policydb_t *policy) {
+int add_rule(const hashtab_key_t s, const hashtab_key_t t,
+const hashtab_key_t c, const hashtab_key_t p, policydb_t *policy) {
 	type_datum_t *src, *tgt;
 	class_datum_t *cls;
 	perm_datum_t *perm;
 	avtab_datum_t *av;
 	avtab_key_t key;
-	
+
 	src = hashtab_search(policy->p_types.table, s);
 	if (src == NULL) {
 		fprintf(stderr, "source type %s does not exist\n", s);
@@ -156,7 +159,7 @@ int add_rule(char *s, char *t, char *c, char *p, policydb_t *policy) {
 
 	return 0;
 }
-	
+
 
 int load_policy(char *filename, policydb_t *policydb, struct policy_file *pf) {
 	int fd;
@@ -199,8 +202,8 @@ int load_policy(char *filename, policydb_t *policydb, struct policy_file *pf) {
 
 	return 0;
 }
-	
-int set_permissive(const char *domain, policydb_t* pdb) {
+
+int set_permissive(const hashtab_key_t domain, policydb_t* pdb) {
 	type_datum_t *type;
 	type = hashtab_search(pdb->p_types.table, domain);
 	if (type == NULL) {
@@ -214,7 +217,7 @@ int set_permissive(const char *domain, policydb_t* pdb) {
 	return 0;
 }
 
-int setup_policy() {
+int setup_policy(void) {
 	char *policy = NULL, *source = NULL, *target = NULL, *class = NULL, *perm = NULL, *outfile = NULL, *permissive = NULL;
 	policydb_t policydb;
 	struct policy_file pf, outpf;
